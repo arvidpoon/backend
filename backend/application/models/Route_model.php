@@ -141,48 +141,79 @@ class Route_model extends CI_Model {
 
     }
 
-    private function _sendRequest($post_data)
+    private function _sendRequest()
     {
 
-        $data = array();
-        foreach ($post_data as $idx => $val)
-        {
-            $data[$idx] = $val;
-        }
+        $this->routes = array();
+        $handle = array();
+        $running = 0;
 
-        $curl = curl_init();
-        curl_setopt_array($curl, array(
-            CURLOPT_RETURNTRANSFER => 1,
-            CURLOPT_URL => 'https://maps.googleapis.com/maps/api/directions/json?' . http_build_query($data),
-        ));
-        $resp_json = curl_exec($curl);
+        $mh = curl_multi_init();
 
-        // Close request to clear up some resources
-        curl_close($curl);
-        $resp = json_decode($resp_json, true);
-        if ($resp['status'] != 'OK')
+        $i = 0;
+        foreach ($this->post_data as $post_data)
         {
-            return $resp['status'];
-        }
-
-        foreach ($resp['routes'] as $route)
-        {
-            $distance = 0;
-            $duration = 0;
-            $legs = array();
-            foreach ($route['legs'] as $leg)
+            $data = array();
+            foreach ($post_data as $idx => $val)
             {
-                $distance += $leg['distance']['value'];
-                $duration += $leg['duration']['value'];
-                $legs[] = $leg;
+                $data[$idx] = $val;
             }
-            $this->routes[] = array(
-                'distance' => $distance,
-                'duration' => $duration,
-                'legs' => $legs,
-            );
+
+            $curl = curl_init();
+            curl_setopt_array($curl, array(
+                CURLOPT_RETURNTRANSFER => 1,
+                CURLOPT_TIMEOUT => 30,
+                CURLOPT_USERAGENT => 'Mozilla/4.0 (compatible; MSIE 5.01; Windows NT 5.0)',
+                CURLOPT_FOLLOWLOCATION => 1,
+                CURLOPT_MAXREDIRS => 7,
+                CURLOPT_URL => 'https://maps.googleapis.com/maps/api/directions/json?' . http_build_query($data),
+            ));
+            curl_multi_add_handle($mh, $curl);
+            $handle[$i++] = $curl;
         }
-        return $resp['status'];
+        do {
+            curl_multi_exec($mh, $running);
+            curl_multi_select($mh);
+        } while ($running > 0);
+
+        foreach ($handle as $i => $curl)
+        {
+            $resp_json = curl_multi_getcontent($curl);
+            if (curl_errno($curl) != 0)
+            {
+                return 'fail';
+            }
+            $resp = json_decode($resp_json, true);
+            if (empty ($resp))
+            {
+                return 'fail';
+            }
+            if ($resp['status'] != 'OK')
+            {
+                return $resp['status'];
+            }
+
+            foreach ($resp['routes'] as $route)
+            {
+                $distance = 0;
+                $duration = 0;
+                $legs = array();
+                foreach ($route['legs'] as $leg)
+                {
+                    $distance += $leg['distance']['value'];
+                    $duration += $leg['duration']['value'];
+                    $legs[] = $leg;
+                }
+                $this->routes[] = array(
+                    'distance' => $distance,
+                    'duration' => $duration,
+                    'legs' => $legs,
+                );
+            }
+            curl_multi_remove_handle($mh, $curl);
+        }
+        curl_multi_close($mh);
+        return 'OK';
 
     }
 
@@ -264,7 +295,7 @@ class Route_model extends CI_Model {
         }
         foreach ($this->valid_field as $key)
         {
-            if (! in_array ($key, $content))
+            if (! array_key_exists ($key, $content))
             {
                 return array();
             }
@@ -273,6 +304,7 @@ class Route_model extends CI_Model {
 
         $result['created'] = $content['created'];
         $result['modified'] = $content['modified'];
+
         return $result;
 
     }
@@ -347,6 +379,8 @@ class Route_model extends CI_Model {
         $this->_update_route_file ($data);
 
         $this->routes = array();
+        $result = $this->_sendRequest();
+        /*
         foreach ($this->post_data as $post_data)
         {
             $result = $this->_sendRequest($post_data);
@@ -360,6 +394,7 @@ class Route_model extends CI_Model {
                 return false;
             }
         }
+        */
         if (count($this->routes) == 0)
         {
             $data = array(
