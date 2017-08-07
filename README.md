@@ -128,7 +128,7 @@ or
 ## Demo
 ```
 - Submit
-1. 	http://localhost/
+1. 	http://<hostname>/
 	5 locations will be sent
 	[
 		["22.372081", "114.107877"],
@@ -141,5 +141,5 @@ or
 
 ```
 - Get
-http://localhost/route/\<token>
+http://<hostname>/route/<token>
 ```
