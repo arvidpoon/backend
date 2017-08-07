@@ -197,6 +197,13 @@ class Route_model extends CI_Model {
                 $shortest_distance = $route['distance'];
                 $shortest_id = $idx;
             }
+            else
+            {
+                if (($shortest_distance == $route['distance']) && ($this->routes[$shortest_id]['duration'] > $route['duration']))
+                {
+                    $shortest_id = $idx;
+                }
+            }
         }
         return $shortest_id;
     }
