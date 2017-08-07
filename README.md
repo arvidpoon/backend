@@ -28,7 +28,7 @@ In backend/application/config/config.php, line 26, change the $config['base_url'
 - Validate the submited points format. Return error if the format is not correct
 - At least 2 coordinate points (start point and dropoff point). Return error if necessary
 - Validate the coordinate value (-90.0000000 <= latitude <= 90.0000000, -180.0000000 <= longitude <= 180.0000000). Return error if invalid
-- Use exec to call and run the calculation module via CLI on background mode
+- Calling calculation module via CLI by PHP 'exec' and run in background mode (' > /dev/null &' in Linux, 'start /b ' in Windows)
 - Return the token to user
 
 ### Get shortest driving route
